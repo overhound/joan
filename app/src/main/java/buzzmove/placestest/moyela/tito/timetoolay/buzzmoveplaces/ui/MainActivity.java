@@ -37,6 +37,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -48,9 +49,11 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import buzzmove.placestest.moyela.tito.timetoolay.buzzmoveplaces.R;
+import buzzmove.placestest.moyela.tito.timetoolay.buzzmoveplaces.controller.ConnectionCheckAsync;
 import buzzmove.placestest.moyela.tito.timetoolay.buzzmoveplaces.controller.FindLocationDataService;
 import buzzmove.placestest.moyela.tito.timetoolay.buzzmoveplaces.controller.RecyclerAdapter;
 import buzzmove.placestest.moyela.tito.timetoolay.buzzmoveplaces.controller.RetroFitInstance;
+import buzzmove.placestest.moyela.tito.timetoolay.buzzmoveplaces.data.OfflineResultsData;
 import buzzmove.placestest.moyela.tito.timetoolay.buzzmoveplaces.data.PlaceResults;
 import buzzmove.placestest.moyela.tito.timetoolay.buzzmoveplaces.data.PlacesList;
 import retrofit2.Call;
@@ -77,6 +80,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private RecyclerView recyclerViewResults;
     private RecyclerAdapter recyclerAdapter;
     private ArrayList<PlaceResults> results;
+    private OfflineResultsData offlineData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +92,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void init() {
+
+        offlineData = new OfflineResultsData(this);
 
         // Set up XML
         searchField = findViewById(R.id.search_field);
@@ -117,6 +123,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         initSearchListener();
         initBottomSheetCallback();
         buildMapsApiClient();
+
     }
 
     private void initBottomSheetCallback() {
@@ -179,7 +186,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onResponse(@NonNull Call<PlacesList> call, @NonNull Response<PlacesList> response) {
 
-                if (response.isSuccessful()) {
+                if (response.isSuccessful() && response.body() != null) {
                     updateUI();
                     for (int i = 0; i < response.body().getPlaceResults().size(); i++) {
 
@@ -198,6 +205,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                         map.moveCamera(CameraUpdateFactory.newLatLng(latLng));
                         map.animateCamera(CameraUpdateFactory.zoomTo(11));
+                        offlineData.addPositions(latLng);
                     }
                     generateDataList(response.body().getPlaceResults());
 
@@ -214,8 +222,38 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void generateDataList(ArrayList<PlaceResults> results) {
         this.results.clear();
-        this.results.addAll(results);
-        recyclerAdapter.notifyDataSetChanged();
+        if (offlineData.savePositions() && offlineData.savePlaceResults(results)) { // if data has been saved offline...
+            this.results.addAll(results);
+            recyclerAdapter.notifyDataSetChanged();
+        }
+    }
+
+    private void checkOffline() {
+        ConnectionCheckAsync connection = new ConnectionCheckAsync();
+        boolean isConnected = false;
+        ArrayList<LatLng> markerPositions = offlineData.getMarkerPositions();
+        try {
+            isConnected = connection.execute().get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        if (!isConnected) {
+            results.addAll(offlineData.getPlaceResults());
+            recyclerAdapter.notifyDataSetChanged();
+            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+            for (int i = 0; i < markerPositions.size(); i++) {
+                MarkerOptions markerOptions = new MarkerOptions();
+                markerOptions.position(markerPositions.get(i))
+                        .snippet(String.valueOf(i))
+                        .icon(getMarkerIcon(getResources().getColor(R.color.colorAccent)));
+
+                marker = map.addMarker(markerOptions);
+
+                map.moveCamera(CameraUpdateFactory.newLatLng(offlineData.getMarkerPositions().get(i)));
+                map.animateCamera(CameraUpdateFactory.zoomTo(11));
+            }
+
+        }
     }
 
     public BitmapDescriptor getMarkerIcon(int color) {
@@ -260,6 +298,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
             ActivityCompat.requestPermissions(this,
                     new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION);
+
         }
     }
 
@@ -311,6 +350,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @SuppressLint("MissingPermission")
     @Override
     public void onMapReady(GoogleMap googleMap) {
+
         map = googleMap;
         map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
@@ -328,6 +368,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 return true;
             }
         });
+        checkOffline();
         if (locationPermissionGranted) {
             buildMapsApiClient();
             map.setMyLocationEnabled(true);

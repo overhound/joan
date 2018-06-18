@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name">Buzzmove Places</string>
-    <string name="places_api_key">AIzaSyBZCj7XtWCAH_oNm4LJ9GE6lgAntXoM0kg</string>
+    <!--INSERT API KEY-->
+    <string name="places_api_key"></string>
     <string name="search">Search</string>
     <string name="text_query">textquery</string>
     <string name="show_results">SHOW RESULTS</string>
-    <!--<string name="places_api_key">AIzaSyCD9jR_Be1jl-WMvd_Hp4tFOESzxzeonYw</string>-->
 </resources>

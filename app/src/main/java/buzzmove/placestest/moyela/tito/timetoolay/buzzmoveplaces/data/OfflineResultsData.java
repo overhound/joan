@@ -15,6 +15,8 @@ public class OfflineResultsData {
     private ArrayList<LatLng> latLng;
     private ArrayList<PlaceResults> placeResults;
     private SharedPreferences prefs;
+    private final String MARKER_DATA = "markerData";
+    private final String RESULTS_DATA = "resultsData";
 
     public OfflineResultsData(Context context) {
         prefs = PreferenceManager.getDefaultSharedPreferences(context);
@@ -25,20 +27,20 @@ public class OfflineResultsData {
     public boolean savePositions() {
         Gson gson = new Gson();
         String json = gson.toJson(latLng); // Convert the array to json...
-        return prefs.edit().putString("markerData", json).commit();
+        return prefs.edit().putString(MARKER_DATA, json).commit();
 
     }
 
     private boolean saveResults() {
         Gson gson = new Gson();
         String json = gson.toJson(placeResults); // Convert the array to json...
-        return prefs.edit().putString("resultsData", json).commit();
+        return prefs.edit().putString(RESULTS_DATA, json).commit();
 
     }
 
     public ArrayList<LatLng> getMarkerPositions() {
         Gson gson = new Gson();
-        String json = prefs.getString("markerData", null); //Retrieve previously saved data
+        String json = prefs.getString(MARKER_DATA, null); //Retrieve previously saved data
         if (json != null) {
             Type type = new TypeToken<ArrayList<LatLng>>() {
             }.getType();
@@ -53,7 +55,7 @@ public class OfflineResultsData {
 
     public ArrayList<PlaceResults> getPlaceResults() {
         Gson gson = new Gson();
-        String json = prefs.getString("resultsData", null); //Retrieve previously saved data
+        String json = prefs.getString(RESULTS_DATA, null); //Retrieve previously saved data
         if (json != null) {
             Type type = new TypeToken<ArrayList<PlaceResults>>() {
             }.getType();

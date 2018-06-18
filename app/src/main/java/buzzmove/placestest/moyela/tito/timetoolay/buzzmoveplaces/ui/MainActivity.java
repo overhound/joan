@@ -193,7 +193,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 .title(placeName)
                                 .snippet(String.valueOf(i))
                                 .icon(getMarkerIcon(getResources().getColor(R.color.colorAccent)));
-//
+
                         marker = map.addMarker(markerOptions);
 
                         map.moveCamera(CameraUpdateFactory.newLatLng(latLng));
